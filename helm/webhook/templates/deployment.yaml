@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "webhook.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "webhook.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "webhook.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "webhook.labels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "webhook.fullname" . }}
+      automountServiceAccountToken: false
+      priorityClassName: {{ .Values.priorityClassName }}
+      terminationGracePeriodSeconds: 30
+
+      # Hard anti-affinity — never schedule 2 pods on the same node
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  {{- include "webhook.selectorLabels" . | nindent 18 }}
+              topologyKey: kubernetes.io/hostname
+
+      # Spread evenly across availability zones (disable for clusters without zone labels, e.g. kind)
+      {{- if .Values.topologySpread.enabled }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              {{- include "webhook.selectorLabels" . | nindent 14 }}
+      {{- end }}
+
+      containers:
+        - name: webhook
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          ports:
+            - containerPort: {{ .Values.service.targetPort }}
+              protocol: TCP
+              name: https
+
+          env:
+            - name: WEBHOOK_TLS_CERT_PATH
+              value: /app/certs/tls.crt
+            - name: WEBHOOK_TLS_KEY_PATH
+              value: /app/certs/tls.key
+            - name: WEBHOOK_PORT
+              value: {{ .Values.service.targetPort | quote }}
+            {{- if .Values.customLabels }}
+            - name: WEBHOOK_CUSTOM_LABELS
+              value: {{ .Values.customLabels | toJson | quote }}
+            {{- end }}
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+
+          # Liveness: process is alive
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.service.targetPort }}
+              scheme: HTTPS
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+          # Readiness: ready to receive traffic (503 during shutdown)
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: {{ .Values.service.targetPort }}
+              scheme: HTTPS
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            capabilities:
+              drop:
+                - ALL
+
+          lifecycle:
+            # Allow kube-proxy to propagate endpoint removal before SIGTERM
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]
+
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
+      volumes:
+        - name: tmp
+          emptyDir: {}
+
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault

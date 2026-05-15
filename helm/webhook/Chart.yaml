@@ -1,0 +1,11 @@
+apiVersion: v2
+name: k8s-mutating-webhook
+description: Production-grade Kubernetes Mutating Admission Webhook
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - kubernetes
+  - webhook
+  - admission
+  - mutating

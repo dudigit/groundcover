@@ -1,0 +1,63 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "webhook.fullname" . }}
+  labels:
+    {{- include "webhook.labels" . | nindent 4 }}
+webhooks:
+  # ── Deployment mutations ───────────────────────────────────────────────────
+  - name: deployments.{{ include "webhook.fullname" . }}.admission
+    admissionReviewVersions: ["v1"]
+    sideEffects: {{ .Values.webhook.sideEffects }}
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    matchPolicy: {{ .Values.webhook.matchPolicy }}
+    reinvocationPolicy: {{ .Values.webhook.reinvocationPolicy }}
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+    namespaceSelector:
+      {{- toYaml .Values.webhook.namespaceSelector | nindent 6 }}
+    # CEL matchConditions — exclude system nodes and leader-election leases
+    matchConditions:
+      - name: exclude-system-nodes
+        expression: '!("system:nodes" in request.userInfo.groups)'
+      - name: exclude-leases
+        expression: '!(request.resource.group == "coordination.k8s.io" && request.resource.resource == "leases")'
+    rules:
+      - apiGroups:   ["apps"]
+        apiVersions: ["v1"]
+        operations:  ["CREATE", "UPDATE"]
+        resources:   ["deployments"]
+        scope:       "Namespaced"
+    clientConfig:
+      service:
+        namespace: {{ .Release.Namespace }}
+        name: {{ include "webhook.fullname" . }}
+        path: /mutate
+        port: {{ .Values.service.port }}
+      caBundle: {{ required "tls.caBundle is required" .Values.tls.caBundle }}
+
+  # ── Service mutations ──────────────────────────────────────────────────────
+  - name: services.{{ include "webhook.fullname" . }}.admission
+    admissionReviewVersions: ["v1"]
+    sideEffects: {{ .Values.webhook.sideEffects }}
+    failurePolicy: {{ .Values.webhook.failurePolicy }}
+    matchPolicy: {{ .Values.webhook.matchPolicy }}
+    reinvocationPolicy: {{ .Values.webhook.reinvocationPolicy }}
+    timeoutSeconds: {{ .Values.webhook.timeoutSeconds }}
+    namespaceSelector:
+      {{- toYaml .Values.webhook.namespaceSelector | nindent 6 }}
+    matchConditions:
+      - name: exclude-system-nodes
+        expression: '!("system:nodes" in request.userInfo.groups)'
+    rules:
+      - apiGroups:   [""]
+        apiVersions: ["v1"]
+        operations:  ["CREATE", "UPDATE"]
+        resources:   ["services"]
+        scope:       "Namespaced"
+    clientConfig:
+      service:
+        namespace: {{ .Release.Namespace }}
+        name: {{ include "webhook.fullname" . }}
+        path: /mutate
+        port: {{ .Values.service.port }}
+      caBundle: {{ required "tls.caBundle is required" .Values.tls.caBundle }}

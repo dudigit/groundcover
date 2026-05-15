@@ -1,0 +1,73 @@
+image:
+  repository: k8s-mutating-webhook
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 3
+
+# TLS — base64-encoded values extracted from the built Docker image
+# Run: make extract-tls-secrets
+tls:
+  caBundle: ""   # base64(ca.crt)   — used in MutatingWebhookConfiguration.caBundle
+  cert: ""       # base64(tls.crt)  — used in Secret
+  key: ""        # base64(tls.key)  — used in Secret
+
+service:
+  port: 443
+  targetPort: 8443
+
+webhook:
+  failurePolicy: Fail
+  timeoutSeconds: 10
+  sideEffects: None
+  matchPolicy: Equivalent
+  reinvocationPolicy: IfNeeded
+  # Exclude system namespaces and the webhook's own namespace from mutation.
+  # Excluding webhook-system prevents the webhook from intercepting its own
+  # Deployment/Service during Helm installs and upgrades (bootstrap deadlock).
+  namespaceSelector:
+    matchExpressions:
+      - key: kubernetes.io/metadata.name
+        operator: NotIn
+        values:
+          - kube-system
+          - kube-public
+          - kube-node-lease
+          - webhook-system
+
+customLabels: {}
+  # team: platform
+  # env: prod
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 128Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 75
+
+priorityClassName: system-cluster-critical
+
+podDisruptionBudget:
+  minAvailable: 2
+
+# Spread pods across availability zones using TopologySpreadConstraints.
+# Requires nodes to have the topology.kubernetes.io/zone label.
+# Disable for local clusters (kind, minikube) that don't have zone labels.
+topologySpread:
+  enabled: true
+
+monitoring:
+  prometheusRule:
+    # Requires the Prometheus Operator CRDs (monitoring.coreos.com/v1).
+    # Set to true when deploying to a cluster with the Prometheus Operator installed.
+    enabled: false
+    namespace: monitoring

@@ -1,0 +1,64 @@
+{{- if .Values.monitoring.prometheusRule.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "webhook.fullname" . }}
+  namespace: {{ .Values.monitoring.prometheusRule.namespace }}
+  labels:
+    {{- include "webhook.labels" . | nindent 4 }}
+    prometheus: kube-prometheus
+    role: alert-rules
+spec:
+  groups:
+    - name: k8s-mutating-webhook
+      interval: 30s
+      rules:
+        # P99 latency exceeds 2s for 5 minutes
+        - alert: WebhookHighLatency
+          expr: |
+            histogram_quantile(0.99,
+              sum(rate(webhook_request_duration_seconds_bucket[5m])) by (le, resource_kind)
+            ) > 2
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Webhook p99 latency > 2s"
+            description: "Resource kind {{`{{ $labels.resource_kind }}`}} p99 latency is {{`{{ $value | humanizeDuration }}`}}"
+
+        # Error rate exceeds 1% for 2 minutes
+        - alert: WebhookHighErrorRate
+          expr: |
+            (
+              sum(rate(webhook_errors_total[2m]))
+              /
+              sum(rate(webhook_requests_total[2m]))
+            ) > 0.01
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Webhook error rate > 1%"
+            description: "Error rate is {{`{{ $value | humanizePercentage }}`}}"
+
+        # No requests for 5 minutes — webhook may be down
+        - alert: WebhookDown
+          expr: |
+            sum(rate(webhook_requests_total[5m])) == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Webhook is receiving no requests"
+            description: "The mutating webhook has processed 0 requests for 5 minutes"
+
+        # High active requests — possible goroutine/asyncio saturation
+        - alert: WebhookHighActiveRequests
+          expr: webhook_active_requests > 50
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Webhook active request count is high"
+            description: "{{`{{ $value }}`}} concurrent requests in flight"
+{{- end }}
