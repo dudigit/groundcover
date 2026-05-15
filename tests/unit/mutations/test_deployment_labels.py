@@ -2,9 +2,9 @@
 
 import pytest
 
+from tests.conftest import build_deployment_review
 from webhook.adapters.mutations.labels.deployment_labels import DeploymentLabelMutator
 from webhook.domain.models.admission import AdmissionReview
-from tests.conftest import build_deployment_review
 
 
 @pytest.fixture
@@ -16,7 +16,9 @@ class TestDeploymentLabelMutator:
     def test_name_is_class_variable(self) -> None:
         assert DeploymentLabelMutator.name == "DeploymentLabelMutator"
 
-    async def test_injects_managed_by_label_on_create(self, mutator: DeploymentLabelMutator) -> None:
+    async def test_injects_managed_by_label_on_create(
+        self, mutator: DeploymentLabelMutator
+    ) -> None:
         review = AdmissionReview.model_validate(build_deployment_review("CREATE"))
         assert review.request is not None
 

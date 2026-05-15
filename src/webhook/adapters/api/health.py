@@ -23,13 +23,13 @@ _shutting_down: bool = False
 
 def init_health_router(registry: MutatorRegistry) -> None:
     """Wire dependencies. Called once from bootstrap/inject.py."""
-    global _registry  # noqa: PLW0603
+    global _registry
     _registry = registry
 
 
 def set_shutting_down() -> None:
     """Signal that the server is draining. /readyz will return 503."""
-    global _shutting_down  # noqa: PLW0603
+    global _shutting_down
     _shutting_down = True
 
 

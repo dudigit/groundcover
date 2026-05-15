@@ -1,6 +1,5 @@
 """Shared test fixtures for unit and integration tests."""
 
-import json
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -8,6 +7,7 @@ from unittest.mock import patch
 import pytest
 
 # ── TLS fixture for config validation ─────────────────────────────────────────
+
 
 @pytest.fixture(autouse=True)
 def mock_tls_paths(tmp_path: Path) -> None:
@@ -25,12 +25,14 @@ def mock_tls_paths(tmp_path: Path) -> None:
     ):
         # Reset singleton so each test gets a fresh config
         import webhook.config as cfg_module
+
         cfg_module._config = None
         yield
         cfg_module._config = None
 
 
 # ── AdmissionReview fixture builders ─────────────────────────────────────────
+
 
 def build_admission_review(
     kind: str,

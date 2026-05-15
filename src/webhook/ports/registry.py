@@ -6,7 +6,7 @@ definition time, not at runtime.
 """
 
 from collections import defaultdict
-from typing import Callable
+from collections.abc import Callable
 
 from webhook.domain.types import OperationType, ResourceKind
 from webhook.ports.mutator import MutatorProtocol

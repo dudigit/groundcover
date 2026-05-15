@@ -53,13 +53,17 @@ class AdmissionRequest(BaseModel):
     namespace: str = ""
     operation: OperationType
     user_info: UserInfo = Field(alias="userInfo")
-    object: KubernetesObject | None = None  # type: ignore[type-arg]  # null on DELETE
-    old_object: KubernetesObject | None = Field(default=None, alias="oldObject")  # type: ignore[type-arg]
+    object: KubernetesObject | None = None  # null on DELETE
+    old_object: KubernetesObject | None = Field(
+        default=None, alias="oldObject"
+    )  # null on CREATE/CONNECT
     dry_run: bool = Field(default=False, alias="dryRun")
 
     @model_validator(mode="after")
     def validate_object_presence(self) -> "AdmissionRequest":
-        """Enforce K8s contract: object is null only on DELETE; old_object only on CREATE/CONNECT."""
+        """Enforce K8s contract: object is null only on DELETE;
+        old_object only on CREATE/CONNECT.
+        """
         if self.operation == "DELETE" and self.object is not None:
             # K8s may still send object on DELETE in some versions — allow it
             pass
@@ -92,12 +96,12 @@ class AdmissionResponse(BaseModel):
     @classmethod
     def deny(cls, uid: AdmissionUID, message: str) -> "AdmissionResponse":
         """Construct a deny response with a human-readable message."""
-        return cls(uid=uid, allowed=False, status={"code": 400, "message": message})
+        return cls(uid=uid, allowed=False, status=f"{message}")
 
     @model_serializer
-    def serialise(self) -> dict[str, Any]:  # type: ignore[type-arg]  # Pydantic serialiser return type
+    def serialise(self) -> dict[str, Any]:
         """Serialise to the K8s wire format: patch bytes → base64 string."""
-        result: dict[str, Any] = {"uid": self.uid, "allowed": self.allowed}  # type: ignore[type-arg]
+        result: dict[str, Any] = {"uid": self.uid, "allowed": self.allowed}
         if self.patch is not None:
             result["patch"] = base64.b64encode(self.patch).decode()
             result["patchType"] = "JSONPatch"
@@ -117,8 +121,8 @@ class AdmissionReview(BaseModel):
     response: AdmissionResponse | None = None
 
     @model_serializer
-    def serialise(self) -> dict[str, Any]:  # type: ignore[type-arg]
-        result: dict[str, Any] = {  # type: ignore[type-arg]
+    def serialise(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
             "apiVersion": self.api_version,
             "kind": self.kind,
         }

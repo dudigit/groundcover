@@ -2,9 +2,9 @@
 
 import pytest
 
+from tests.conftest import build_service_review
 from webhook.adapters.mutations.labels.service_labels import ServiceLabelMutator
 from webhook.domain.models.admission import AdmissionReview
-from tests.conftest import build_service_review
 
 
 @pytest.fixture
@@ -78,9 +78,7 @@ class TestServiceLabelMutator:
 
         ops = await mutator.mutate(review.request)
 
-        labels_init_op = next(
-            (op for op in ops if op.path == "/metadata/labels"), None
-        )
+        labels_init_op = next((op for op in ops if op.path == "/metadata/labels"), None)
         assert labels_init_op is not None
         assert labels_init_op.op == "add"
         assert labels_init_op.value == {}

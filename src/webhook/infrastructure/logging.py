@@ -13,7 +13,6 @@ Key decisions:
 import random
 import sys
 from collections.abc import Callable
-from typing import Any
 
 import structlog
 from structlog.types import EventDict, WrappedLogger
@@ -41,7 +40,9 @@ def _sanitize_sensitive_fields(
     return event_dict
 
 
-def _make_sampling_processor(sample_rate: float) -> Callable[[WrappedLogger, str, EventDict], EventDict]:
+def _make_sampling_processor(
+    sample_rate: float,
+) -> Callable[[WrappedLogger, str, EventDict], EventDict]:
     """Return a processor that drops INFO success events based on sample_rate.
 
     Events at WARNING or above, and any error events, are never dropped.
@@ -56,9 +57,12 @@ def _make_sampling_processor(sample_rate: float) -> Callable[[WrappedLogger, str
         if method != "info":
             return event_dict
         event = event_dict.get("event", "")
-        if event == "admission.mutation.complete" and sample_rate < 1.0:
-            if random.random() > sample_rate:  # noqa: S311  # not security-sensitive sampling
-                raise structlog.DropEvent
+        if (
+            event == "admission.mutation.complete"
+            and sample_rate < 1.0
+            and random.random() > sample_rate  # not security-sensitive sampling
+        ):
+            raise structlog.DropEvent
         return event_dict
 
     return _sample

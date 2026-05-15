@@ -20,7 +20,7 @@ class LabelMutatorBase:
     def _build_label_ops(
         self,
         request: AdmissionRequest,
-        desired: LabelMap,  # type: ignore[type-arg]
+        desired: LabelMap,
     ) -> list[JSONPatchOp]:
         """Return patch ops needed to bring the object's labels to the desired state.
 

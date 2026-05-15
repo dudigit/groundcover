@@ -9,8 +9,6 @@ Responsibilities:
 - Record per-request metrics.
 """
 
-from typing import Any
-
 import structlog
 from fastapi import APIRouter, Request, Response
 from pydantic import ValidationError
@@ -32,7 +30,7 @@ _recorder: MetricsRecorder | None = None
 
 def init_webhook_router(service: AdmissionService, recorder: MetricsRecorder) -> None:
     """Wire dependencies. Called once from bootstrap/inject.py."""
-    global _service, _recorder  # noqa: PLW0603
+    global _service, _recorder
     _service = service
     _recorder = recorder
 
@@ -57,6 +55,7 @@ async def mutate(request: Request) -> Response:
         fallback = _fallback_allow_response(uid="unknown")
         return _json_response(fallback)
 
+    assert review is not None
     assert review.request is not None
 
     request_uid = review.request.uid
@@ -88,7 +87,7 @@ async def mutate(request: Request) -> Response:
         )
         _recorder.record_error(error_type="mutation_error", resource_kind=resource_kind)
         result_review = _allow_review_with_no_patch(review)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         await logger.acritical(
             "admission.error.unexpected",
             error=str(exc),

@@ -12,7 +12,6 @@ from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
 from webhook.adapters.api import health as health_router_module
 from webhook.adapters.api.health import router as health_router
@@ -27,7 +26,7 @@ logger = structlog.get_logger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
     """Application lifespan: startup → yield → shutdown."""
     config = get_config()
 
@@ -68,7 +67,7 @@ def create_app() -> FastAPI:
 
     # Observability middleware (must be added before other middleware)
     app.add_middleware(
-        ObservabilityMiddleware,  # type: ignore[arg-type]
+        ObservabilityMiddleware,
         recorder=recorder,
         slow_threshold_ms=config.slow_request_threshold_ms,
     )

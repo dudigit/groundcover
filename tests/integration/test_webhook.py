@@ -2,27 +2,27 @@
 
 import base64
 import json
-from typing import Any
 
 import pytest
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from tests.conftest import build_deployment_review, build_service_review
 
-
 # ── App fixture ───────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def app():
     """Create the FastAPI app with test overrides applied."""
     # Config singleton already patched by autouse mock_tls_paths in conftest.py
     # Reset bootstrap state between tests
-    from webhook.adapters.api.health import _shutting_down
     import webhook.adapters.api.health as health_module
+
     health_module._shutting_down = False
 
     from webhook.bootstrap.app_factory import create_app
+
     return create_app()
 
 
@@ -37,14 +37,13 @@ async def client(app) -> AsyncClient:
 
 # ── Health endpoints ──────────────────────────────────────────────────────────
 
+
 class TestHealthEndpoints:
     async def test_healthz_returns_200(self, client: AsyncClient) -> None:
         response = await client.get("/healthz")
         assert response.status_code == 200
 
-    async def test_readyz_returns_200_when_registry_has_mutators(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_readyz_returns_200_when_registry_has_mutators(self, client: AsyncClient) -> None:
         response = await client.get("/readyz")
         assert response.status_code == 200
 
@@ -56,10 +55,9 @@ class TestHealthEndpoints:
 
 # ── Deployment mutations ──────────────────────────────────────────────────────
 
+
 class TestDeploymentMutation:
-    async def test_create_deployment_returns_allowed_true(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_create_deployment_returns_allowed_true(self, client: AsyncClient) -> None:
         review = build_deployment_review("CREATE")
         resp = await client.post("/mutate", json=review)
         assert resp.status_code == 200
@@ -83,9 +81,7 @@ class TestDeploymentMutation:
         data = resp.json()
         assert data["response"]["allowed"] is True
 
-    async def test_dry_run_deployment_returns_allowed_no_patch(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_dry_run_deployment_returns_allowed_no_patch(self, client: AsyncClient) -> None:
         review = build_deployment_review("CREATE", dry_run=True)
         resp = await client.post("/mutate", json=review)
         assert resp.status_code == 200
@@ -109,18 +105,15 @@ class TestDeploymentMutation:
 
 # ── Service mutations ─────────────────────────────────────────────────────────
 
+
 class TestServiceMutation:
-    async def test_create_service_returns_allowed_true(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_create_service_returns_allowed_true(self, client: AsyncClient) -> None:
         review = build_service_review("CREATE")
         resp = await client.post("/mutate", json=review)
         assert resp.status_code == 200
         assert resp.json()["response"]["allowed"] is True
 
-    async def test_create_service_injects_resource_kind_label(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_create_service_injects_resource_kind_label(self, client: AsyncClient) -> None:
         review = build_service_review("CREATE")
         resp = await client.post("/mutate", json=review)
         patch_b64 = resp.json()["response"].get("patch")
@@ -139,10 +132,9 @@ class TestServiceMutation:
 
 # ── Error handling ────────────────────────────────────────────────────────────
 
+
 class TestMutateErrorHandling:
-    async def test_malformed_body_returns_200_allowed(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_malformed_body_returns_200_allowed(self, client: AsyncClient) -> None:
         """Webhook must never block — invalid bodies return allowed=True."""
         resp = await client.post(
             "/mutate",
@@ -153,9 +145,7 @@ class TestMutateErrorHandling:
         data = resp.json()
         assert data["response"]["allowed"] is True
 
-    async def test_missing_request_field_returns_allowed(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_missing_request_field_returns_allowed(self, client: AsyncClient) -> None:
         """AdmissionReview without 'request' is allowed through (fail-open)."""
         resp = await client.post(
             "/mutate",
@@ -164,11 +154,10 @@ class TestMutateErrorHandling:
         assert resp.status_code == 200
         assert resp.json()["response"]["allowed"] is True
 
-    async def test_unknown_kind_returns_allowed_no_patch(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_unknown_kind_returns_allowed_no_patch(self, client: AsyncClient) -> None:
         """Resources with no registered mutator are allowed through without patch."""
         from tests.conftest import build_admission_review
+
         review = build_admission_review(
             kind="ConfigMap",
             api_version_group="",

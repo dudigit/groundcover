@@ -11,6 +11,7 @@ Health and metrics endpoints are excluded from duration recording to avoid noise
 """
 
 import time
+from collections.abc import Awaitable, Callable
 
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -39,9 +40,11 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
         self._recorder = recorder
         self._slow_threshold_ms = slow_threshold_ms
 
-    async def dispatch(self, request: Request, call_next: object) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         if request.url.path in _EXCLUDED_PATHS:
-            return await call_next(request)  # type: ignore[misc]
+            return await call_next(request)
 
         request_id = _extract_request_id(request)
         trace_id = request.headers.get("traceparent") or request.headers.get("x-b3-traceid")
@@ -51,7 +54,7 @@ class ObservabilityMiddleware(BaseHTTPMiddleware):
         start = time.perf_counter()
 
         try:
-            response: Response = await call_next(request)  # type: ignore[misc]
+            response: Response = await call_next(request)
             duration_seconds = time.perf_counter() - start
             duration_ms = duration_seconds * 1000
 

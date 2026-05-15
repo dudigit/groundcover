@@ -4,6 +4,7 @@ description: Production-grade Kubernetes Mutating Admission Webhook
 type: application
 version: 1.0.0
 appVersion: "1.0.0"
+icon: https://kubernetes.io/images/favicon.png
 keywords:
   - kubernetes
   - webhook

@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environment
+.venv/
+
+# uv
+.uv/
+
+# Test & coverage
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
+# Type checking
+.mypy_cache/
+
+# Linting
+.ruff_cache/
+
+# Build / dist
+dist/
+build/
+*.egg-info/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Helm
+helm/webhook/charts/
+
+# Temp certs (extracted locally by make dev-certs)
+/tmp/certs/

@@ -1,0 +1,6 @@
+# Placeholder values for `helm lint` / CI — NOT for real deployments.
+# TLS values are injected at deploy time via --set (extracted from the built image).
+tls:
+  caBundle: "bGludA=="   # base64("lint")
+  cert: "bGludA=="
+  key: "bGludA=="

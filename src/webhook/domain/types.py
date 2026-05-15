@@ -36,7 +36,7 @@ LabelKey = Annotated[
 
 LabelValue = Annotated[str, Field(max_length=63)]
 
-LabelMap = dict[LabelKey, LabelValue]  # type: ignore[type-arg]  # K8s label key spec is complex
+LabelMap = dict[LabelKey, LabelValue]  # K8s label key spec is complex
 
 # Untyped K8s resource body — schema too large and versioned externally
-KubernetesObject = dict[str, Any]  # type: ignore[type-arg]  # intentional; K8s schema not modelled
+KubernetesObject = dict[str, Any]  # intentional; K8s schema not modelled

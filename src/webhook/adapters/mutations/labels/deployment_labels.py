@@ -32,7 +32,7 @@ class DeploymentLabelMutator(LabelMutatorBase):
         return self._build_label_ops(request, desired)
 
     @staticmethod
-    def _build_desired_labels() -> LabelMap:  # type: ignore[type-arg]
+    def _build_desired_labels() -> LabelMap:
         config = get_config()
         labels: dict[str, str] = {
             "app.kubernetes.io/managed-by": "webhook",
@@ -40,4 +40,4 @@ class DeploymentLabelMutator(LabelMutatorBase):
             "webhook.io/resource-kind": "Deployment",
         }
         labels.update(config.custom_labels)
-        return labels  # type: ignore[return-value]
+        return labels

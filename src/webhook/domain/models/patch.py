@@ -25,7 +25,8 @@ class JSONPatchOp(BaseModel):
 
     op: JSONPatchOperation
     path: PatchPath
-    value: str | int | bool | dict[str, Any] | list[Any] | None = None  # type: ignore[type-arg]  # RFC 6902 allows any JSON value
+    # RFC 6902 allows any JSON value
+    value: str | int | bool | dict[str, Any] | list[Any] | None = None
     from_path: PatchPath | None = Field(default=None, alias="from")
 
     @model_validator(mode="after")
@@ -42,12 +43,7 @@ class JSONPatchOp(BaseModel):
 
 def serialize_patch(ops: list[JSONPatchOp]) -> bytes:
     """Serialize a list of patch ops to a JSON bytes array for the AdmissionResponse."""
-    return json.dumps(
-        [
-            op.model_dump(by_alias=True, exclude_none=True)
-            for op in ops
-        ]
-    ).encode()
+    return json.dumps([op.model_dump(by_alias=True, exclude_none=True) for op in ops]).encode()
 
 
 def make_add_label_op(key: str, value: str) -> JSONPatchOp:

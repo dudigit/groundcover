@@ -36,7 +36,7 @@ class AppConfig(BaseSettings):
 
     # Label injection — JSON-encoded dict from env var
     # Example: WEBHOOK_CUSTOM_LABELS='{"team":"platform","env":"prod"}'
-    custom_labels: LabelMap = Field(default_factory=dict)  # type: ignore[assignment]  # LabelMap is a TypeAlias
+    custom_labels: LabelMap = Field(default_factory=dict)
 
     @field_validator("tls_cert_path", "tls_key_path", mode="after")
     @classmethod
@@ -66,7 +66,7 @@ def get_config() -> AppConfig:
     TLS path validation is skipped in test environments by setting
     WEBHOOK_TLS_CERT_PATH and WEBHOOK_TLS_KEY_PATH to existing test fixtures.
     """
-    global _config  # noqa: PLW0603
+    global _config
     if _config is None:
         _config = AppConfig()
     return _config
