@@ -37,6 +37,7 @@ dev = [
     "mypy>=1.13.0",
     "ruff>=0.8.0",
     "pytest-cov>=7.1.0",
+    "debugpy>=1.8.20",
 ]
 
 [tool.mypy]

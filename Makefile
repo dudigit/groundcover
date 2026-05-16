@@ -1,4 +1,4 @@
-.PHONY: help build-local load-local deploy-local local uninstall clean test lint lint-fix typecheck helm-lint
+.PHONY: help build-local load-local deploy-local local uninstall clean test lint lint-fix typecheck helm-lint dev dev-debug
 
 # ── Configuration ────────────────────────────────────────────────────────────
 IMAGE_BASE        := k8s-mutating-webhook
@@ -63,6 +63,69 @@ lint-fix: ## Auto-fix ruff lint issues
 
 typecheck: ## Run mypy strict type checking
 	uv run mypy src/webhook/
+
+# ── Local dev (no container) ─────────────────────────────────────────────────
+
+DEV_CERTS_DIR := .dev-certs
+
+dev: ## Run the webhook locally without a container (generates TLS certs on first run)
+	@mkdir -p $(DEV_CERTS_DIR)
+	@if [ ! -f $(DEV_CERTS_DIR)/tls.key ]; then \
+	  echo "Generating self-signed dev TLS certs in $(DEV_CERTS_DIR)/..."; \
+	  openssl req -x509 -newkey rsa:4096 -nodes -days 365 \
+	    -keyout $(DEV_CERTS_DIR)/tls.key \
+	    -out    $(DEV_CERTS_DIR)/tls.crt \
+	    -subj   "/CN=localhost" \
+	    -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" \
+	    2>/dev/null; \
+	  echo "Certs written to $(DEV_CERTS_DIR)/"; \
+	fi
+	WEBHOOK_TLS_CERT_PATH=$(DEV_CERTS_DIR)/tls.crt \
+	WEBHOOK_TLS_KEY_PATH=$(DEV_CERTS_DIR)/tls.key \
+	WEBHOOK_LOG_LEVEL=DEBUG \
+	WEBHOOK_WORKERS=1 \
+	uv run gunicorn \
+	  webhook.bootstrap.app_factory:app \
+	  --worker-class uvicorn.workers.UvicornWorker \
+	  --bind 0.0.0.0:8443 \
+	  --workers 1 \
+	  --timeout 0 \
+	  --graceful-timeout 5 \
+	  --worker-tmp-dir /tmp \
+	  --keyfile $(DEV_CERTS_DIR)/tls.key \
+	  --certfile $(DEV_CERTS_DIR)/tls.crt \
+	  --log-file - \
+	  --access-logfile - \
+	  --reload
+
+dev-debug: ## Run the webhook with debugpy (VS Code attach on port 5678). Set breakpoints, then run this target.
+	@mkdir -p $(DEV_CERTS_DIR)
+	@if [ ! -f $(DEV_CERTS_DIR)/tls.key ]; then \
+	  echo "Generating self-signed dev TLS certs in $(DEV_CERTS_DIR)/..."; \
+	  openssl req -x509 -newkey rsa:4096 -nodes -days 365 \
+	    -keyout $(DEV_CERTS_DIR)/tls.key \
+	    -out    $(DEV_CERTS_DIR)/tls.crt \
+	    -subj   "/CN=localhost" \
+	    -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" \
+	    2>/dev/null; \
+	  echo "Certs written to $(DEV_CERTS_DIR)/"; \
+	fi
+	@echo "Starting webhook with debugpy on port 5678..."
+	@echo "→ Open VS Code and run 'Python: Attach to webhook (debugpy)' to connect."
+	@echo "→ Once attached, send a curl request to trigger your breakpoints."
+	WEBHOOK_TLS_CERT_PATH=$(DEV_CERTS_DIR)/tls.crt \
+	WEBHOOK_TLS_KEY_PATH=$(DEV_CERTS_DIR)/tls.key \
+	WEBHOOK_LOG_LEVEL=DEBUG \
+	WEBHOOK_WORKERS=1 \
+	uv run python -m debugpy \
+	  --listen 0.0.0.0:5678 \
+	  --wait-for-client \
+	  -m uvicorn webhook.bootstrap.app_factory:app \
+	  --host 0.0.0.0 \
+	  --port 8443 \
+	  --ssl-keyfile $(DEV_CERTS_DIR)/tls.key \
+	  --ssl-certfile $(DEV_CERTS_DIR)/tls.crt \
+	  --log-level debug
 
 # ── Helm ─────────────────────────────────────────────────────────────────────
 

@@ -32,11 +32,13 @@ build/
 .DS_Store
 
 # IDE
-.vscode/
+.vscode/*.log
+.vscode/settings.json
 .idea/
 
 # Helm
 helm/webhook/charts/
 
-# Temp certs (extracted locally by make dev-certs)
+# Temp certs (generated locally by make dev)
 /tmp/certs/
+.dev-certs/
